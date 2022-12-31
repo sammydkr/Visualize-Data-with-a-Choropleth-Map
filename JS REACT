@@ -1,0 +1,171 @@
+const URL = () => {
+  let education_data = 'https://raw.githubusercontent.com/no-stack-dub-sack/testable-projects-fcc/master/src/data/choropleth_map/for_user_education.json';
+  let county_data = 'https://raw.githubusercontent.com/no-stack-dub-sack/testable-projects-fcc/master/src/data/choropleth_map/counties.json';
+  return [education_data, county_data];
+};
+
+function handleData(data) {
+  let [edu_data, cty_data] = data;
+  
+  let min_rate = d3.min(edu_data, (el) => el.bachelorsOrHigher),
+      max_rate = d3.max(edu_data, (el) => el.bachelorsOrHigher); 
+  
+  let margin = { top: 70, right: 20, bottom: 50, left: 80 },
+      width  = 600 - (margin.left + margin.right),  
+      height = 500 - (margin.top + margin.bottom),  
+      colors = [
+        '#fcfbfd','#efedf5','#dadaeb','#bcbddc',
+        '#9e9ac8','#807dba','#6a51a3','#54278f','#3f007d'
+      ];
+  
+  function handleTitle() {
+    return d3.select('body')
+      .append('div')
+      .attr('id', 'title')
+      .text('US Educational Attainment');
+  }
+  
+  function handleDescription() {
+    return d3.select('body')
+      .append('div')
+      .attr('id', 'description')
+      .text('Percent of adults age 25+ with a bachelor\'s degree or higher (2010–2014)');
+  }
+  
+  function handleSVG() {
+    return d3.select('.svg-parent')
+      .append('svg')
+      .attr('id', 'plot')
+      .attr('viewBox', `0 0 1000 700`) 
+      .attr('preserveAspectRatio', 'xMidYMid meet') 
+      .attr('transform', 'scale(1.05)')
+      .append('g')
+      .attr('transform', `translate(20, ${margin.top})`);
+  }
+  
+  function handleTooltip() {
+    return d3.select("body")
+      .append("div")
+      .attr("id", "tooltip")
+      .style('transform', 'scale(0)')
+      .style("opacity", 0);
+  }
+  
+  function handleColor(svg) {
+    let range = max_rate - min_rate,
+        codomain = d3.range(min_rate, max_rate, range / 8);
+    
+    let color_scale = d3.scaleThreshold()
+      .domain(codomain)
+      .range(colors);
+    
+    return { scale: color_scale, codomain: codomain };
+  }
+  
+  function handlePath(svg, color) {
+    let path = d3.geoPath();
+    
+    svg.append("g")
+      .attr("class", "states")
+      .selectAll("path")
+      .data(topojson.feature(cty_data, cty_data.objects.states).features)
+      .enter()
+        .append("path")
+        .attr("d", path);
+    
+    svg.append("path")
+      .attr("class", "state-borders")
+      .attr("d", path(topojson.mesh(cty_data, cty_data.objects.states, (a, b) => a !== b)));
+
+    return svg.append('g')
+      .attr('class', 'counties')
+      .selectAll('path')
+      .data(topojson.feature(cty_data, cty_data.objects.counties).features)
+      .enter()
+        .append('path')
+        .attr('class', 'county')
+        .attr('data-fips', (d) => d.id)
+        .attr('data-education', (d) => edu_data.find(el => el.fips === d.id).bachelorsOrHigher)
+        .attr('fill', (d) => color.scale(edu_data.find(el => el.fips === d.id).bachelorsOrHigher))
+        .attr('d', path)
+        .on('mouseover', handleMouseOver)
+        .on('mouseout',  handleMouseOut)
+  }
+  
+  function handleMouseOver() {
+    let point = d3.select(this),
+        eduVal = point.attr('data-education') + '%',
+        fips = point.attr('data-fips'),
+        obj = edu_data.find(el => el.fips === +fips),
+        name = obj.area_name + ', ' + obj.state,
+        pos_x = d3.event.pageX, 
+        pos_y = d3.event.pageY, 
+        center = window.innerWidth / 2,
+        shift_left = (pos_x > center) ? pos_x - 190 : pos_x + 20,
+        _ = '\u2003'; //emspace
+    
+    tooltip.style('left', shift_left+'px');
+    
+    tooltip.style('transform', 'scale(1)')
+      .style('opacity', 1)
+      .style('top', `${pos_y - 100}px`)
+      .attr('data-education', eduVal);
+    
+    tooltip.text(name + _ + eduVal);
+  }
+  
+  function handleMouseOut() {
+    tooltip.style('transform', 'scale(0)')
+      .style('opacity', 0);
+  }
+  
+  function handleX(svg, color) {
+    let x = d3.scaleLinear()
+      .domain([min_rate, max_rate]) 
+      .rangeRound([600, 860]);
+    
+    let g = svg.append('g')
+      .attr('id', 'legend')
+      .attr('transform', 'translate(0, 40)');
+    
+    const colors = () => {
+      let range = color.codomain;
+      range.push(max_rate);
+      return range.map((el,i) => i < 1 ? [el,el] : [range[i-1], el]);
+    };
+    
+    g.selectAll("rect")
+    .data(colors())
+    .enter()
+      .append("rect")
+      .attr("height", 8)
+      .attr("x", d => x(d[0]))
+      .attr("width", d => x(d[1]) - x(d[0]))
+      .attr("fill", d => color.scale(d[0]));
+
+    g.call(d3.axisBottom(x)
+           .tickSize(13)
+           .tickFormat((el) => Math.round(el) + '%') 
+           .tickValues(color.scale.domain()))
+      .select(".domain")
+      .remove();
+  }
+  
+  let tooltip = handleTooltip(),
+      descr   = handleDescription().lower(),
+      title   = handleTitle().lower(),
+      svg     = handleSVG(),
+      color   = handleColor(svg),
+      path    = handlePath(svg, color),
+      X       = handleX(svg, color);
+}
+
+let promises = URL().map(el => d3.json(el));
+Promise.all(promises).then(res => handleData(res))
+
+/*
+Reference:
+  - https://beta.observablehq.com/@mbostock/d3-choropleth
+  - https://bl.ocks.org/mbostock/4136647
+  - https://bl.ocks.org/mbostock/4090848
+*/
