@@ -1,0 +1,67 @@
+@import url(https://fonts.googleapis.com/css?family=Ubuntu:400,500);
+
+@media (max-width:500px) {
+  #description {
+    padding-bottom:1rem;
+  }
+}
+
+@media (max-width:250px) {
+  #description {
+    padding-bottom:2rem;
+  }
+}
+
+body {
+  height:100%;
+  font-family: 'Ubuntu', sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:space-evenly;
+}
+
+#title {
+  color:rgba(0,0,0,0.75);
+  font-weight:500;
+  font-size:1.25rem;
+  padding:0.5rem 0 0.75rem 0;
+}
+
+.svg-parent {
+  position:relative;
+  top:-2rem;
+  //resize:horizontal;
+  overflow:hidden;
+  //height:auto;
+  height:100%;
+  width:95%;
+}
+
+#tooltip {
+  position:absolute;
+  background-color:rgba(50,38,44,1.14);
+  color:#FFF;
+  border-radius:2%;
+  padding:0.25rem;
+  transition:all 300ms ease;
+  line-height:1.5;
+}
+
+
+.county:hover { stroke:rgba(0,0,0,0.5); }
+
+.pr-3 { padding:0 1rem; }
+
+.states {
+  fill:none;
+  stroke:#FFF;
+  stroke-linejoin:round;
+}
+
+.state-borders {
+  fill:none;
+  stroke:black;
+  stroke-width:3px;
+  stroke-linejoin:round;
+}
